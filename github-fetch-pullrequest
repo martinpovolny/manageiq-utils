@@ -1,0 +1,99 @@
+#!/usr/bin/env python
+"""Fetch pull requests from GitHub
+
+Usage:
+
+  * PROG     -- With no arguments it just lists actual pull requests
+  * PROG <n> -- Fetches the pull request #n, creates separate branch
+        for it, rebases it on top of requested branch (ususally master)
+        and deletes remote.
+"""
+
+import git
+import os
+import simplejson
+import sys
+import urllib
+
+USER = "ManageIQ"
+REPO = "manageiq"
+OAUTH_FILE = os.environ['HOME'] + "/.github-fetch-pullrequest-token"
+OAUTH = ""
+
+
+class Progress(git.RemoteProgress):
+    """Shows state on command line"""
+    def __init__(self, desc):
+        super(Progress, self).__init__()
+        self.desc = desc
+
+    def update(self, op_code, cur_count, max_count=None, message=''):
+        print "\r%s: %s/%s %s" % (self.desc, cur_count, max_count, message),
+        sys.stdout.flush()
+
+def setup_token():
+    global OAUTH
+    try:
+        OAUTH = open(OAUTH_FILE).readline().strip()
+    except Exception:
+        pass
+
+def list_requests():
+    """Prints open pull requests with some additional info"""
+    url = "https://api.github.com/repos/%s/%s/pulls" % (USER, REPO)
+    pull_requests = simplejson.load(urllib.urlopen(url))
+    for request in pull_requests:
+        print request.get('number'), request.get('title')
+
+
+def get_pull_request(req_num):
+    """Get data about one request"""
+    url = "https://api.github.com/repos/%s/%s/pulls/%d" % (USER, REPO, req_num)
+    if OAUTH:
+        url += "?access_token=%s" % OAUTH
+    result = simplejson.load(urllib.urlopen(url))
+    return result
+
+
+def prepare_repo(req_num):
+    """Main functionality"""
+    repo = git.Repo('.')
+    if repo.is_dirty():
+        print "Repo is dirty."
+        sys.exit(1)
+
+    # if repo.untracked_files:
+    #     print "Repo contains untracked files."
+    #     sys.exit(1)
+
+    pull_request = get_pull_request(req_num)
+    remote_url = pull_request.get("head").get("repo").get("clone_url")
+    from_who = pull_request.get("user").get("login")
+    remote_branch = pull_request.get("head").get("ref")
+    local_branch = pull_request.get("base").get("ref")
+
+    print (remote_url, remote_branch)
+
+    remote_name = "pull-request-%s-%s" % (from_who, remote_branch)
+
+    remote = repo.create_remote(remote_name, remote_url)
+    try:
+        remote.fetch(progress=Progress("fetch"))
+    except AssertionError:  # :-(  Some git assertion fails here
+        pass
+    repo.git.checkout('%s/%s' % (remote_name, remote_branch), b=remote_name)
+    repo.delete_remote(remote)
+    try:
+        repo.git.rebase(local_branch)
+    except git.exc.GitCommandError:
+        print ("Rebase failed. You can either resolve it and run "
+               "`git rebase --continue` or ask author to do the rebase.")
+
+
+if __name__ == "__main__":
+    if len(sys.argv) == 1:
+        list_requests()
+        sys.exit(0)
+
+    setup_token()
+    prepare_repo(int(sys.argv[1]))
