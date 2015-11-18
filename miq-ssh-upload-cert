@@ -1,0 +1,15 @@
+export HOST=10-16-5-90.rhq.lab.eng.bos.redhat.com
+
+#./bin/ca-create-cert -f vars.sh $HOST
+
+ssh-copy-id root@$HOST
+
+# SSLCertificateFile /var/www/miq/vmdb/certs/server.cer
+# SSLCertificateKeyFile /var/www/miq/vmdb/certs/server.cer.key
+
+export HOST_UNDERSCORE=$(echo $HOST | tr . _)
+
+scp ca/crt/${HOST_UNDERSCORE}.server.crt root@$HOST:/var/www/miq/vmdb/certs/server.cer
+scp ca/key/${HOST_UNDERSCORE}.server.key root@$HOST:/var/www/miq/vmdb/certs/server.cer.key
+
+ssh root@$HOST service httpd restart

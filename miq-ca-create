@@ -1,0 +1,27 @@
+git clone git@github.com:fluffle/ca-scripts.git
+
+export PREFIX=/home/martin/Projects/ca
+mkdir $PREFIX
+
+cd ca-scripts
+make install
+
+cd $PREFIX
+
+cat <<EOD > vars.sh
+export CA_HOME=$PREFIX
+export CA_NAME=devil
+export CA_DOMAIN=devil.usersys.redhat.com
+export CA_DN_C=CZ
+export CA_DN_ST=Brno
+export CA_DN_L=Brno
+export CA_DN_O=ManageIQ
+export CA_DN_OU=Development
+export CA_DN_CN=devil.usersys.redhat.com
+EOD
+
+./bin/ca-init -f vars.sh
+
+openssl x509 -outform der -in  ./crt/devil_usersys_redhat_com.ca.crt -out ./crt/devil_usersys_redhat_com.ca.der
+
+#./bin/ca-create-cert -f vars.sh  foobar.com
