@@ -29,11 +29,11 @@ echo 10 > REGION
 cp certs/v2_key.dev certs/v2_key
 bundle install
 
-echo 'Migrating database'
-bundle exec rake db:migrate
-
 echo 'Fetching pull request'
 ~/bin/github-fetch-pullrequest $1
+
+echo 'Migrating database'
+bundle exec rake db:migrate
 
 echo "Launching..."
 nohup bundle exec rails s -b 0.0.0.0 -p 4000 &
