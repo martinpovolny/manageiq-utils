@@ -55,4 +55,4 @@ for (( ; ; )); do
   sleep 2
 done
 
-google-chrome-stable http://$IP:443
+google-chrome-stable https://$IP

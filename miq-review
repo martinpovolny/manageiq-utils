@@ -28,6 +28,7 @@ cp ~/Projects/templates/database.yml config/
 echo 10 > REGION
 cp certs/v2_key.dev certs/v2_key
 bundle install
+./bin/update
 
 echo 'Fetching pull request'
 ~/bin/github-fetch-pullrequest $1
