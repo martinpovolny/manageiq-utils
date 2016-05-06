@@ -1,7 +1,8 @@
 #!/bin/bash
 set -x
 
-# dnf install sshpass links wget
+# dnf install sshpass links wget ruby
+# + run script as root user
 
 cd /var/lib/libvirt/images
 
