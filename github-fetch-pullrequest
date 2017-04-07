@@ -15,8 +15,14 @@ import simplejson
 import sys
 import urllib
 
-USER = "ManageIQ"
-REPO = "manageiq"
+cr = git.Repo('.').remote().config_reader
+# git@github.com:ManageIQ/manageiq-ui-classic.git
+
+STAGE1 = cr.config.get('remote "upstream"', 'url').split(':')[1]
+USER, REPO = STAGE1.split('/')
+REPO = REPO.replace('.git', '')
+#import pdb; pdb.set_trace()
+
 OAUTH_FILE = os.environ['HOME'] + "/.github-fetch-pullrequest-token"
 OAUTH = ""
 
@@ -49,6 +55,7 @@ def list_requests():
 def get_pull_request(req_num):
     """Get data about one request"""
     url = "https://api.github.com/repos/%s/%s/pulls/%d" % (USER, REPO, req_num)
+    #import pdb; pdb.set_trace()
     if OAUTH:
         url += "?access_token=%s" % OAUTH
     result = simplejson.load(urllib.urlopen(url))
