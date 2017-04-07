@@ -6,26 +6,32 @@ set -x
 
 cd /var/lib/libvirt/images
 
-BASE=http://file.cloudforms.lab.eng.rdu2.redhat.com/builds/cfme/downstream_56/latest/
-LATEST=$(links -dump $BASE | grep qcow2 | ruby -n -e '$_ =~ /([-.\w]*\.qcow2)/; puts $1')
-#DOWNLOAD=http://file.cloudforms.lab.eng.rdu2.redhat.com/builds/cfme/5.6/latest/cfme-rhos-5.6.0.4-1.x86_64.qcow2
-DOWNLOAD=$BASE/$LATEST
+LATEST=cfme-rhos-5.7.0.6-1.x86_64.qcow2
 
-if [ ! -f $LATEST ]; then
-  wget $DOWNLOAD
-fi
+#if [ ! -f $LATEST ]; then
+  #BASE=http://file.cloudforms.lab.eng.rdu2.redhat.com/builds/cfme/downstream_56/latest/
+  BASE=http://file.cloudforms.lab.eng.rdu2.redhat.com/builds/manageiq/euwe/latest/
+  LATEST=$(links -dump $BASE | grep qc2 | grep libv | ruby -n -e '$_ =~ /([-.\w]*\.qc2)/; puts $1')
+  DOWNLOAD=$BASE/$LATEST
+
+  echo DOWNLOADING: $DOWNLOAD
+
+  if [ ! -f $LATEST ]; then
+    wget $DOWNLOAD
+  fi
+#fi
 
 # IMAGE=$(echo $DOWNLOAD | ruby -n -e 'puts $_.split("/").last')
 
-NAME=nightly
+NAME=${1-nightly}
+
 virsh destroy $NAME
 virsh undefine $NAME
 
 IMAGE=$NAME-$LATEST
 cp $LATEST $IMAGE
 
-#virt-install --connect qemu:///system -n $NAME --ram 2048 --os-type=linux --os-variant=rhel5 --disk path=$IMAGE,device=disk,bus=virtio,format=qcow2 --vcpus=2 --vnc --import # --noautoconsole --import
-virt-install --connect qemu:///system --ram 1024 -n $NAME -r 2048 --os-type=linux --os-variant=rhel5 --disk path=$IMAGE,device=disk,format=qcow2 --vcpus=2 --vnc --import --noautoconsole
+virt-install --connect qemu:///system -n $NAME --memory 4096 --os-type=linux --os-variant=rhel5 --disk path=$IMAGE,device=disk,format=qcow2 --vcpus=2 --vnc --import --noautoconsole --cpu host
 
 MAC=''
 while [ -z "$MAC" ]; do
@@ -48,7 +54,7 @@ for (( ; ; )); do
 done
 
 # appliance_console_cli -r 10 -i -p serepes -k serepes
-sshpass -p "smartvm" ssh -o StrictHostKeyChecking=no root@$IP -C 'appliance_console_cli -r 10 -i -p serepes -k serepes'
+sshpass -p "smartvm" ssh -o StrictHostKeyChecking=no root@$IP -C 'appliance_console_cli -r 10 -i -p serepes -k serepes --force-key'
 
 for (( ; ; )); do
   timeout 1 bash -c "cat < /dev/null > /dev/tcp/$IP/443" && break
