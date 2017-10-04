@@ -6,20 +6,22 @@ set -x
 
 cd /var/lib/libvirt/images
 
-LATEST=cfme-rhos-5.7.0.6-1.x86_64.qcow2
+#LATEST=cfme-rhos-5.7.0.6-1.x86_64.qcow2
+LATEST=manageiq-libvirt-fine-201704200600-035ddc573e.qc2
 
-#if [ ! -f $LATEST ]; then
-  #BASE=http://file.cloudforms.lab.eng.rdu2.redhat.com/builds/cfme/downstream_56/latest/
-  BASE=http://file.cloudforms.lab.eng.rdu2.redhat.com/builds/manageiq/euwe/latest/
-  LATEST=$(links -dump $BASE | grep qc2 | grep libv | ruby -n -e '$_ =~ /([-.\w]*\.qc2)/; puts $1')
-  DOWNLOAD=$BASE/$LATEST
+if [ ! -f $LATEST ]; then
+#   #BASE=http://file.cloudforms.lab.eng.rdu2.redhat.com/builds/cfme/downstream_56/latest/
+#   BASE=http://file.cloudforms.lab.eng.rdu2.redhat.com/builds/manageiq/fine/latest/
+BASE=http://file.cloudforms.lab.eng.rdu2.redhat.com/builds/cfme/5.8/latest/
+LATEST=$(links -dump $BASE | grep qcow2 | ruby -n -e '$_ =~ /([-.\w]*\.qcow2)/; puts $1')
+DOWNLOAD=$BASE/$LATEST
 
-  echo DOWNLOADING: $DOWNLOAD
+echo DOWNLOADING: $DOWNLOAD
 
-  if [ ! -f $LATEST ]; then
-    wget $DOWNLOAD
-  fi
-#fi
+ if [ ! -f $LATEST ]; then
+   wget $DOWNLOAD
+ fi
+fi
 
 # IMAGE=$(echo $DOWNLOAD | ruby -n -e 'puts $_.split("/").last')
 
@@ -53,6 +55,7 @@ for (( ; ; )); do
   sleep 2
 done
 
+exit
 # appliance_console_cli -r 10 -i -p serepes -k serepes
 sshpass -p "smartvm" ssh -o StrictHostKeyChecking=no root@$IP -C 'appliance_console_cli -r 10 -i -p serepes -k serepes --force-key'
 

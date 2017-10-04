@@ -3,26 +3,19 @@ set -e
 
 echo "Reviewing pull-request $1"
 
-PID=$(lsof -t -i :4000 || true)
+#PID=$(lsof -t -i :4000 || true)
+PID=$(lsof -i :4000 | grep ruby | sed -e 's/[\t ]\+/ /' | cut -d ' ' -f 2 || true)
 
 if [ -n "$PID" ]; then
   echo "killing previous server instance $PID"
   kill $PID || true
 fi
 
-cd ~/Projects/
-#git clone git@github.com:ManageIQ/manageiq.git -o upstream manageiq-review
-cd manageiq-review
-
 echo 'Preparing ManageIQ master'
 
+cd ~/Projects/review/manageiq
 git reset --hard
 git checkout master
-
-for remote in $(git remote | grep -v upstream); do git remote rm $remote; done
-for branch in $(git branch -l | grep pull); do git branch -D $branch; done
-
-git pull upstream
 
 cp ~/Projects/templates/database.yml config/
 echo 10 > REGION
@@ -30,12 +23,26 @@ cp certs/v2_key.dev certs/v2_key
 bundle install
 ./bin/update
 
+#echo 'Migrating database'
+#bundle exec rake db:migrate
+
+echo 'Preparing ManageIQ UI master'
+cd ~/Projects/review/manageiq-ui-classic
+#git clone git@github.com:ManageIQ/manageiq.git -o upstream manageiq-review
+
+cd ~/Projects/review/manageiq-ui-classic/
+git reset --hard
+git checkout master
+
+for remote in $(git remote | grep -vE 'upstream|origin'); do git remote rm $remote; done
+for branch in $(git branch -l | grep pull); do git branch -D $branch; done
+
+git pull upstream
+
 echo 'Fetching pull request'
 ~/bin/github-fetch-pullrequest $1
 
-echo 'Migrating database'
-bundle exec rake db:migrate
-
+cd ~/Projects/review/manageiq
 echo "Launching..."
 nohup bundle exec rails s -b 0.0.0.0 -p 4000 &
 
@@ -45,7 +52,7 @@ while true; do
 done
 
 #xdg-open http://localhost:4000
-google-chrome-stable http://localhost:4000 https://github.com/ManageIQ/manageiq/pull/$1
+google-chrome-stable http://localhost:4000 https://github.com/ManageIQ/manageiq-ui-classic/pull/$1
 
 # memcached -l 0.0.0.0:11111 -d
 
