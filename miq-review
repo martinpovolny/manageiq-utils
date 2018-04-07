@@ -11,11 +11,18 @@ if [ -n "$PID" ]; then
   kill $PID || true
 fi
 
-echo 'Preparing ManageIQ master'
-
+echo 'Checking out ManageIQ master'
 cd ~/Projects/review/manageiq
 git reset --hard
-git checkout master
+git fetch upstream && git checkout master && git merge upstream/master --ff-only
+
+echo 'Checking out ManageIQ UI master'
+cd ~/Projects/review/manageiq-ui-classic
+git reset --hard
+git fetch upstream && git checkout master && git merge upstream/master --ff-only
+
+echo 'Preparing ManageIQ master'
+cd ~/Projects/review/manageiq
 
 cp ~/Projects/templates/database.yml config/
 echo 10 > REGION
@@ -23,16 +30,8 @@ cp certs/v2_key.dev certs/v2_key
 bundle install
 ./bin/update
 
-#echo 'Migrating database'
-#bundle exec rake db:migrate
-
 echo 'Preparing ManageIQ UI master'
 cd ~/Projects/review/manageiq-ui-classic
-#git clone git@github.com:ManageIQ/manageiq.git -o upstream manageiq-review
-
-cd ~/Projects/review/manageiq-ui-classic/
-git reset --hard
-git checkout master
 
 for remote in $(git remote | grep -vE 'upstream|origin'); do git remote rm $remote; done
 for branch in $(git branch -l | grep pull); do git branch -D $branch; done
