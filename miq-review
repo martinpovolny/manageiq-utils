@@ -11,32 +11,34 @@ if [ -n "$PID" ]; then
   kill $PID || true
 fi
 
-echo 'Checking out ManageIQ master'
-cd ~/Projects/review/manageiq
-git reset --hard
-git fetch upstream && git checkout master && git merge upstream/master --ff-only
+if [ "$2" != '--skip' ]; then
+	echo 'Checking out ManageIQ master'
+	cd ~/Projects/review/manageiq
+	git reset --hard
+	git fetch upstream && git checkout master && git merge upstream/master --ff-only
 
-echo 'Checking out ManageIQ UI master'
-cd ~/Projects/review/manageiq-ui-classic
-git reset --hard
-git fetch upstream && git checkout master && git merge upstream/master --ff-only
+	echo 'Checking out ManageIQ UI master'
+	cd ~/Projects/review/manageiq-ui-classic
+	git reset --hard
+	git fetch upstream && git checkout master && git merge upstream/master --ff-only
 
-echo 'Preparing ManageIQ master'
-cd ~/Projects/review/manageiq
+	echo 'Preparing ManageIQ master'
+	cd ~/Projects/review/manageiq
 
-cp ~/Projects/templates/database.yml config/
-echo 10 > REGION
-cp certs/v2_key.dev certs/v2_key
-bundle install
-./bin/update
+	cp ~/Projects/templates/database.yml config/
+	#echo 10 > REGION
+	cp certs/v2_key.dev certs/v2_key
+	bundle install
+	./bin/update || true
+else
+	echo 'Preparing ManageIQ UI master'
+	cd ~/Projects/review/manageiq-ui-classic
 
-echo 'Preparing ManageIQ UI master'
-cd ~/Projects/review/manageiq-ui-classic
-
-for remote in $(git remote | grep -vE 'upstream|origin'); do git remote rm $remote; done
-for branch in $(git branch -l | grep pull); do git branch -D $branch; done
-
-git pull upstream
+	git reset --hard
+	git checkout master
+	for remote in $(git remote | grep -vE 'upstream|origin'); do git remote rm $remote; done
+	for branch in $(git branch -l | grep pull); do git branch -D $branch; done
+fi
 
 echo 'Fetching pull request'
 ~/bin/github-fetch-pullrequest $1
