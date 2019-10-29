@@ -6,24 +6,17 @@ set -x
 
 cd /var/lib/libvirt/images
 
-#LATEST=cfme-rhos-5.7.0.6-1.x86_64.qcow2
-LATEST=manageiq-libvirt-fine-201704200600-035ddc573e.qc2
+if [ ! -f "$LATEST" ]; then
+  #BASE=http://file.cloudforms.lab.eng.rdu2.redhat.com/builds/cfme/5.10/5.10.0.24
+  BASE=http://file.cloudforms.lab.eng.rdu2.redhat.com/builds/cfme/5.11/5.11.0.27
+  LATEST=$(links -dump $BASE | grep qcow2 | grep rhevm | ruby -n -e '$_ =~ /([-.\w]*\.qcow2)/; puts $1')
+  DOWNLOAD=$BASE/$LATEST
 
-if [ ! -f $LATEST ]; then
-#   #BASE=http://file.cloudforms.lab.eng.rdu2.redhat.com/builds/cfme/downstream_56/latest/
-#   BASE=http://file.cloudforms.lab.eng.rdu2.redhat.com/builds/manageiq/fine/latest/
-BASE=http://file.cloudforms.lab.eng.rdu2.redhat.com/builds/cfme/5.8/latest/
-LATEST=$(links -dump $BASE | grep qcow2 | ruby -n -e '$_ =~ /([-.\w]*\.qcow2)/; puts $1')
-DOWNLOAD=$BASE/$LATEST
-
-echo DOWNLOADING: $DOWNLOAD
-
- if [ ! -f $LATEST ]; then
-   wget $DOWNLOAD
- fi
+  if [ ! -f "$LATEST" ]; then
+    echo $(tput bold)DOWNLOAD: $DOWNLOAD $(tput sgr0)
+    wget $DOWNLOAD
+  fi
 fi
-
-# IMAGE=$(echo $DOWNLOAD | ruby -n -e 'puts $_.split("/").last')
 
 NAME=${1-nightly}
 
@@ -33,36 +26,42 @@ virsh undefine $NAME
 IMAGE=$NAME-$LATEST
 cp $LATEST $IMAGE
 
-virt-install --connect qemu:///system -n $NAME --memory 4096 --os-type=linux --os-variant=rhel5 --disk path=$IMAGE,device=disk,format=qcow2 --vcpus=2 --vnc --import --noautoconsole --cpu host
+DB_IMAGE=/var/lib/libvirt/images/miq-db.qcow2
+qemu-img create -f qcow2 $DB_IMAGE 500M
+
+echo $(tput bold)Installing in QEMU $(tput sgr0)
+virt-install --connect qemu:///system -n $NAME --memory 4096 \
+	--os-type=linux --os-variant=rhel6 --disk path=$IMAGE,device=disk,format=qcow2 --vcpus=2 --vnc --import --noautoconsole --cpu host \
+	--disk path=$DB_IMAGE,device=disk,format=qcow2
 
 MAC=''
 while [ -z "$MAC" ]; do
-  echo 'waiting for virtual machine to start'
+  echo $(tput bold)Waiting for virtual machine to start $(tput sgr0)
   sleep 2
   MAC=$(virsh domiflist $NAME | grep network | ruby -n -e 'puts $_.split(/\s+/)[4]')
 done
 
 IP=''
 while [ -z "$IP" ]; do
-  echo 'waiting for IP address'
+  echo $(tput bold)Waiting for IP address $(tput sgr0)
   sleep 2
   IP=$(ip neigh | grep $MAC | cut -d ' ' -f 1)
 done
 
 for (( ; ; )); do
   timeout 1 bash -c "cat < /dev/null > /dev/tcp/$IP/22" && break
-  echo 'waiting for ssh to start'
+  echo $(tput bold)Waiting for ssh to start $(tput sgr0)
   sleep 2
 done
 
 exit
 # appliance_console_cli -r 10 -i -p serepes -k serepes
-sshpass -p "smartvm" ssh -o StrictHostKeyChecking=no root@$IP -C 'appliance_console_cli -r 10 -i -p serepes -k serepes --force-key'
+sshpass -p "smartvm" ssh -o StrictHostKeyChecking=no root@$IP -C 'appliance_console_cli -r 10 -i -p serepes -k serepes --force-key --dbdisk /dev/vdb'
 
 for (( ; ; )); do
   timeout 1 bash -c "cat < /dev/null > /dev/tcp/$IP/443" && break
-  echo 'waiting for HTTPS to start'
+  echo $(tput bold)Waiting for HTTPS to start $(tput sgr0)
   sleep 2
 done
 
-google-chrome-stable https://$IP
+echo google-chrome-stable https://$IP
